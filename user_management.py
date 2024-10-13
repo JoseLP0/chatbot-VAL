@@ -16,7 +16,6 @@ client = MongoClient(connection_string, tlsCAFile=certifi.where())
 
 chatbot_db = client['chatbot_db']
 users_col = chatbot_db.users
-history_col = chatbot_db.history
 
 users_col.create_index("email", unique=True)
 users_col.create_index("username", unique=True)
@@ -24,6 +23,7 @@ users_col.create_index("username", unique=True)
 
 def register_users():
     print(Fore.CYAN + 'VAL: Enter a email and password.\n')
+
     # Loop until a valid email is provided
     while True:
         email = check_exit(input('Enter Email: ').lower())
@@ -69,29 +69,33 @@ def register_users():
 
 
 def login(email=None, password=None):
-    print(Fore.CYAN + 'VAL: Enter a email and password.\n')
+    # check for exit commands
+    check_exit(email)
+    check_exit(password)
+
     while True:
-        # If email and password are not provided (manual login), ask for them
-        if not email or not password:
-            email = check_exit(input('Enter Email: ').lower())
-            password = check_exit(input('Enter Password: '))
-        # Find the user in the database
         user = users_col.find_one({'email': email})
 
         if user:
             # Check if the provided password matches the stored hashed password
             if check_password(user['password'], password):
                 print(Fore.CYAN + 'VAL: Login successful!\n')
-                print(user)
                 return user  # Set the logged_in_user to the user data
             else:
                 print(Fore.RED + '\nVAL: Incorrect password. Please try again.\n')
-                email = None
-                password = None
+                return None
         else:
             print(Fore.RED + '\nVAL: No account found with this email. Please try again.\n')
-            email = None
-            password = None
+            return None
+
+
+def save_conversation_history(user_email, messages):
+    # Save the conversation history for the logged-in user
+    users_col.update_one(
+        {"email": user_email},
+        {"$set": {"conversation_history": messages}}  # Update the conversation history
+    )
+    print(Fore.GREEN + "Conversation history saved successfully.")
 
 
 def is_email_valid(email):
